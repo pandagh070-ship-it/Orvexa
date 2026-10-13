@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>Orvexa</title>
+<style>
+:root{color-scheme:dark;--bg:#071321;--panel:#102238;--blue:#78c9ff;--muted:#9bb3c8}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at top,#12365a 0,#071321 58%);font-family:Arial,sans-serif;color:#eef7ff;min-height:100vh}
+main{max-width:700px;margin:auto;padding:28px 18px 40px}.brand{font-size:38px;font-weight:800;letter-spacing:1px;color:var(--blue);direction:ltr;text-align:center;margin:18px 0 5px}.tag{text-align:center;color:var(--muted);margin-bottom:30px}
+h1{font-size:25px;line-height:1.5;margin:0 0 10px}.intro{color:#c4d6e7;line-height:1.8;margin:0 0 20px}
+.card{background:#0d1e30eF;border:1px solid #25425c;border-radius:20px;padding:18px;box-shadow:0 16px 50px #0004}
+label{display:block;margin-bottom:9px;color:#d5e8f8}textarea,input{width:100%;background:#071522;color:#fff;border:1px solid #34516b;border-radius:12px;padding:14px;font-size:16px;outline:none}textarea{min-height:105px;resize:vertical}
+button{border:0;border-radius:12px;padding:14px 16px;font-size:16px;font-weight:bold;cursor:pointer;background:linear-gradient(110deg,#6cc7ff,#a4e3ff);color:#062039;width:100%;margin-top:12px}
+button.secondary{background:#17324b;color:#dff2ff;border:1px solid #34516b}.row{display:flex;gap:10px}.row button{flex:1}
+#status{color:var(--muted);font-size:14px;line-height:1.7;margin-top:12px}.results{margin-top:18px;display:grid;gap:10px}.place{padding:14px;border:1px solid #28465f;background:#0a1928;border-radius:14px}.place strong{display:block;margin-bottom:7px}.place a{color:var(--blue);text-decoration:none}.small{font-size:13px;color:var(--muted);line-height:1.6;margin-top:8px}
+</style>
+</head>
+<body><main>
+<div class="brand">ORVEXA</div><div class="tag">Discover beyond the map.</div>
+<h1>صف المكان، ودع أورڤيكسا يبحث عنه 📍</h1>
+<p class="intro">اكتب وصفًا طبيعيًا للمكان الذي تبحث عنه، مثل: حديقة واسعة فيها أشجار ونافورة، أو محل كمبيوتر قريب.</p>
+<section class="card">
+<label for="query">ما المكان الذي تبحث عنه؟</label>
+<textarea id="query" placeholder="مثال: حديقة كبيرة فيها أشجار ومقاعد..."></textarea>
+<label for="area" style="margin-top:14px">المدينة أو المنطقة (اختياري)</label>
+<input id="area" placeholder="مثال: البليدة، الجزائر">
+<div class="row"><button onclick="searchPlaces()">ابحث عن أماكن</button><button class="secondary" onclick="useLocation()">موقعي الحالي</button></div>
+<div id="status">يستخدم البحث بيانات OpenStreetMap ويتطلب اتصالًا بالإنترنت.</div>
+<div id="results" class="results"></div>
+</section>
+<p class="small">النسخة التجريبية: البحث يعتمد على كلمات الوصف وبيانات الخرائط المفتوحة، وليس على ذكاء اصطناعي كامل بعد.</p>
+</main>
+<script>
+let coords=null;
+function useLocation(){const s=document.getElementById('status');s.textContent='جارٍ تحديد الموقع...';if(!navigator.geolocation){s.textContent='تحديد الموقع غير متاح على هذا الجهاز.';return}navigator.geolocation.getCurrentPosition(p=>{coords={lat:p.coords.latitude,lon:p.coords.longitude};s.textContent='تم تحديد موقعك. اكتب وصف المكان ثم اضغط بحث.'},()=>{s.textContent='تعذر تحديد الموقع. اكتب اسم المدينة يدويًا.'},{enableHighAccuracy:true,timeout:12000})}
+async function searchPlaces(){
+ const q=document.getElementById('query').value.trim(),area=document.getElementById('area').value.trim(),status=document.getElementById('status'),results=document.getElementById('results');
+ if(!q){status.textContent='اكتب وصف المكان أولًا.';return}
+ status.textContent='جارٍ البحث في الخرائط المفتوحة...';results.innerHTML='';
+ try{
+  let search=q+(area?' '+area:'');
+  let url='https://nominatim.openstreetmap.org/search?format=jsonv2&limit=8&q='+encodeURIComponent(search);
+  if(coords&&!area){url+='&viewbox='+(coords.lon-0.25)+','+(coords.lat+0.25)+','+(coords.lon+0.25)+','+(coords.lat-0.25)+'&bounded=0'}
+  const response=await fetch(url,{headers:{'Accept-Language':'ar,en'}});
+  if(!response.ok)throw new Error('search');
+  const data=await response.json();
+  if(!data.length){status.textContent='لم نجد نتائج مطابقة تمامًا. جرّب وصفًا أقصر أو اكتب اسم المدينة.';return}
+  status.textContent='تم العثور على '+data.length+' نتيجة. تحقق من التفاصيل قبل الذهاب.';
+  data.forEach(p=>{const el=document.createElement('div');el.className='place';const name=document.createElement('strong');name.textContent=p.name||p.display_name.split(',')[0];const desc=document.createElement('div');desc.className='small';desc.textContent=p.display_name;const link=document.createElement('a');link.href='https://www.openstreetmap.org/?mlat='+p.lat+'&mlon='+p.lon+'#map=17/'+p.lat+'/'+p.lon;link.target='_blank';link.rel='noopener';link.textContent='عرض على الخريطة ↗';el.append(name,desc,link);results.appendChild(el)})
+ }catch(e){status.textContent='تعذر الاتصال بخدمة الخرائط. تحقق من الإنترنت وحاول لاحقًا.'}
+}
+</script></body></html>
